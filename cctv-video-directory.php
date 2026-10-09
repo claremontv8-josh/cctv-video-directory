@@ -2,10 +2,10 @@
 /**
  * Plugin Name: CCTV Video Directory
  * Description: Searchable Claremont CCTV library with meeting navigator links, local caching and safe background refreshes. Shortcode: [cctv_directory]
- * Version: 1.0.0
+ * Version: 1.2.1
  * Requires at least: 6.2
  * Requires PHP: 7.4
- * Author: Kevin Tyson
+ * Author: Kevin Tyson, Joshua Nelson
  * License: GPL-2.0-or-later
  */
 if (!defined('ABSPATH')) { exit; }
@@ -86,14 +86,14 @@ function cctv_dir_step() {
 function cctv_dir_manifest(){nocache_headers();$c=cctv_dir_catalog();wp_send_json(array('version'=>$c['version'],'updated'=>$c['updated'],'count'=>count($c['rows']),'file'=>'catalog.'.$c['version'].'.json'));}
 function cctv_dir_download(){nocache_headers();$c=cctv_dir_catalog();$v=isset($_GET['version'])?sanitize_text_field(wp_unslash($_GET['version'])):'';if($v!==$c['version']){wp_send_json(array('error'=>'Catalog changed. Please try again.'),409);}wp_send_json($c);}
 function cctv_dir_view(){
- nocache_headers();header('Content-Type: text/html; charset='.get_bloginfo('charset'));$html=file_get_contents(__DIR__.'/assets/index.html');$c=cctv_dir_catalog();
+ $compact=isset($_GET['compact'])&&wp_unslash($_GET['compact'])==='1';nocache_headers();header('Content-Type: text/html; charset='.get_bloginfo('charset'));$html=file_get_contents(__DIR__.'/assets/index.html');$c=cctv_dir_catalog();if($compact){$html=str_replace('<body>','<body class="homepage-mode">',$html);}
  $html=preg_replace_callback('~<script id="catalog-data" type="application/json">.*?</script>~s',function()use($c){return '<script id="catalog-data" type="application/json">'.wp_json_encode($c,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).'</script>';},$html);
  $config=array('manifest'=>admin_url('admin-ajax.php?action=cctv_directory_manifest'),'catalog'=>admin_url('admin-ajax.php?action=cctv_directory_catalog'),'view'=>admin_url('admin-ajax.php?action=cctv_directory_view'));
  $html=str_replace('</head>','<script>window.CCTV_WP='.wp_json_encode($config,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT).';</script></head>',$html);
  $html=str_replace('href="./"','href="'.esc_url($config['view']).'"',$html);echo $html;exit;
 }
 foreach(array('view','manifest','catalog') as $route){$fn=$route==='catalog'?'cctv_dir_download':'cctv_dir_'.$route;add_action('wp_ajax_cctv_directory_'.$route,$fn);add_action('wp_ajax_nopriv_cctv_directory_'.$route,$fn);}
-add_shortcode('cctv_directory',function(){wp_enqueue_script('cctv-directory-frame',plugins_url('assets/frame.js',__FILE__),array(),'1.0.0',true);return '<iframe class="cctv-directory-frame" title="CCTV Video Library" src="'.esc_url(admin_url('admin-ajax.php?action=cctv_directory_view')).'" style="width:100%;min-height:600px;border:0;display:block" loading="eager"></iframe>';});
+add_shortcode('cctv_directory',function($attrs=array()){$attrs=shortcode_atts(array('mode'=>'full'),$attrs,'cctv_directory');$compact=sanitize_key($attrs['mode'])==='home';wp_enqueue_script('cctv-directory-frame',plugins_url('assets/frame.js',__FILE__),array(),'1.1.0',true);$src=admin_url('admin-ajax.php?action=cctv_directory_view');if($compact){$src=add_query_arg('compact','1',$src);}return '<iframe class="cctv-directory-frame'.($compact?' cctv-directory-home':'').'" title="CCTV Video Library" src="'.esc_url($src).'" style="width:100%;min-height:'.($compact?'280px':'600px').';border:0;display:block" loading="eager"></iframe>';});
 add_action('admin_menu',function(){add_options_page('CCTV Directory','CCTV Directory','manage_options','cctv-directory','cctv_dir_settings');});
 function cctv_dir_settings(){if(!current_user_can('manage_options')){return;}wp_enqueue_script('cctv-directory-admin',plugins_url('assets/admin.js',__FILE__),array(),'1.0.0',true);wp_localize_script('cctv-directory-admin','CCTV_ADMIN',array('url'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('cctv_directory_admin')));$c=cctv_dir_catalog();$status=get_option('cctv_dir_status');echo '<div class="wrap"><h1>CCTV Video Directory</h1><p>Add a Shortcode block to any page and enter <code>[cctv_directory]</code>.</p><p>Available now: '.esc_html(number_format(count($c['rows']))).' videos. Directory date: '.esc_html($c['updated']).'.</p><p>Refresh retrieves the full CCTV directory and matching school board meeting pages. The existing directory stays available until a complete refresh succeeds.</p><p><button class="button button-primary" id="cctv-refresh">Refresh from CCTV</button></p><p id="cctv-admin-status" role="status">'.esc_html($status['message']??'Ready.').'</p><p>Updates also run daily through WordPress scheduled tasks. Keeping this page open during a manual refresh helps it finish faster. On low-traffic sites, your host can configure a regular WordPress cron run.</p></div>';}
 add_action('wp_ajax_cctv_directory_admin',function(){check_ajax_referer('cctv_directory_admin','nonce');if(!current_user_can('manage_options')){wp_send_json_error('Administrator access required.',403);}if(isset($_POST['start'])){cctv_dir_start();}cctv_dir_step();wp_send_json_success(get_option('cctv_dir_status',array('running'=>false,'message'=>'Ready.')));});

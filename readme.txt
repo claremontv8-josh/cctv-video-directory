@@ -2,17 +2,30 @@
 Contributors: kevintyson
 Requires at least: 6.2
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 
-Search Claremont CCTV videos with program/channel filters, sorting, optional regular expressions, and corresponding school board meeting pages.
+Search Claremont CCTV videos with program/channel filters, sorting, optional regular expressions, and corresponding school board meeting pages. Co-authored by Kevin Tyson and Joshua Nelson.
 
 == Installation ==
 1. In WordPress, go to Plugins > Add New Plugin > Upload Plugin.
 2. Select cctv-video-directory.zip, install it, and activate it.
-3. Edit or create a public page. Add a Shortcode block containing:
-   [cctv_directory]
+3. Edit or create a public page and add the shortcode for the layout you want (see below).
 4. Publish the page. A full-width page template is recommended.
+
+== Compact homepage embed ==
+
+In Divi, add a **Shortcode** module where the directory should appear and paste:
+
+[cctv_directory mode="home"]
+
+In the WordPress block editor, use a **Shortcode** block and paste the same shortcode. This compact mode fits within the page: it starts with one responsive row (6 videos on desktop, 3 on tablet, 1 on phone), then “List more rows” reveals additional videos. Search and filter results appear beneath the controls, and selecting a video opens CCTV in a new tab.
+
+== Full directory page ==
+
+For the full directory layout, use a Shortcode module or block containing:
+
+[cctv_directory]
 
 No API keys, sign-in for visitors, build tools, or separate database setup are needed. This requires a WordPress installation that permits custom plugins.
 
